@@ -158,6 +158,11 @@ const vbFull = () => ({ x: vx, y: vy, w: vw, h: vh });
 
 /* ---------- panel views ---------- */
 const thumb = src => src.replace(/\.webp$/, '-sm.webp');
+// photo strip; data-lb="<set>:<index>" tells the lightbox which list to page through
+const strip = (list, set, alt) => `<div class="strip">${list.map((p, i) => `<button type="button" data-lb="${set}:${i}" aria-label="הגדלת תמונה ${i + 1} מתוך ${list.length}"><img src="${p}" alt="${alt}" loading="lazy"></button>`).join('')}</div>`;
+const videos = apt => !apt.videos.length ? '' : `
+  <h2 class="sub">${apt.videos.length > 1 ? 'סיורי וידאו' : 'סיור וידאו'}</h2>
+  <div class="videos">${apt.videos.map((v, i) => `<button type="button" data-video="${i}" aria-label="סיור וידאו ${i + 1} בדירה ${apt.id}"><img src="${v.poster}" alt="" loading="lazy"><span class="play" aria-hidden="true"></span></button>`).join('')}</div>`;
 const cta = id => `<div class="cta-row">
   <a class="btn btn--solid" href="tel:+972522791267"><svg><use href="#i-phone"/></svg>התקשרו</a>
   <a class="btn btn--glass" href="${WA + waText(id)}" target="_blank" rel="noopener"><svg class="wa"><use href="#i-wa"/></svg>וואטסאפ</a>
@@ -178,15 +183,19 @@ const buildingView = () => `
       <span class="go" aria-hidden="true">${a.status === 'rented' ? '' : '‹'}</span>
     </button></li>`).join('')}</ul>
   ${cta()}
+  <h2 class="sub">הבניין והלובי</h2>
+  ${strip(PLAN.building, 'building', 'הכניסה והלובי של בית דקסה')}
   <a class="link" href="tour/">לסיור המלא באתר</a>`;
 
 const aptView = apt => `
   <button type="button" class="back" data-go="">כל הבניין</button>
   <h1 class="display">דירה ${apt.id}</h1>
   <div class="facts"><span>${apt.count} חדרים</span><span>כ-${apt.area} מ״ר</span><span>מזגן בכל חדר</span><span>חניה פרטית</span><span>דוד גז</span></div>
+  ${videos(apt)}
+  ${apt.views.length ? `<h2 class="sub">הנוף מהדירה</h2>${strip(apt.views, 'view', `הנוף מדירה ${apt.id}`)}` : ''}
+  <h2 class="sub">החדרים</h2>
   <p class="muted">בחרו חדר בתוכנית או ברשימה.</p>
   ${roomList(apt)}
-  ${apt.video ? '<button type="button" class="btn btn--solid video-btn" data-video>סיור וידאו בדירה</button>' : ''}
   ${cta(apt.id)}`;
 
 const roomView = (apt, room) => `
@@ -194,18 +203,20 @@ const roomView = (apt, room) => `
   <h1 class="display">${room.name}</h1>
   <p class="muted">כ-${room.area} מ״ר</p>
   ${room.photos.length
-    ? `<div class="strip">${room.photos.map((p, i) => `<button type="button" data-photo="${i}" aria-label="הגדלת תמונה ${i + 1} מתוך ${room.photos.length}"><img src="${p}" alt="${room.name}" loading="lazy"></button>`).join('')}</div>`
+    ? strip(room.photos, 'room', room.name)
     : '<div class="empty">עוד אין לנו תמונה של החדר הזה. רוצים לראות אותו? נשמח לתאם ביקור.</div>'}
   ${roomList(apt, room)}
   ${cta(apt.id)}`;
 
 /* ---------- interaction ---------- */
 panel.addEventListener('click', e => {
-  const t = e.target.closest('[data-go], [data-photo], [data-video]');
+  const t = e.target.closest('[data-go], [data-lb], [data-video]');
   if (!t) return;
   if ('go' in t.dataset) go(t.dataset.go);
-  else if ('photo' in t.dataset) openPhotos(cur.room.photos, +t.dataset.photo);
-  else openVideo(cur.apt.video);
+  else if ('lb' in t.dataset) {
+    const [set, i] = t.dataset.lb.split(':');
+    openPhotos({ room: cur.room?.photos, view: cur.apt?.views, building: PLAN.building }[set], +i);
+  } else openVideo(cur.apt.videos[+t.dataset.video].src);
 });
 // list hover lights up the room on the plan (mouse only; on touch a tap navigates anyway)
 const highlight = id => { for (const p of roomEls) p.classList.toggle('hl', !!id && p.apt === cur.apt && p.room.id === id); };
