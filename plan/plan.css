@@ -1,0 +1,187 @@
+/* Blueprint explorer. Tokens, .glass, .btn, .dock and .lightbox come from ../style.css */
+.plan-app {
+  --paper: #FFFFFF;
+  --shared: #ECE7DE;
+  --free: #EEF3EC;
+  --free-hover: #DCE8D8;
+  --room-hover: #CADDC5;
+  --room-sel: #A9C7A3;
+  --panel-w: 400px;
+  --sheet-peek: 44svh;
+  height: 100svh;
+  overflow: hidden;
+  touch-action: manipulation;
+}
+
+/* ---------- stage: the drawing ---------- */
+.stage {
+  position: fixed; inset: 0; inset-inline-start: var(--panel-w);
+  /* faint drafting grid behind the plan */
+  background-image:
+    linear-gradient(rgba(47,74,58,.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(47,74,58,.06) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+#plan { width: 100%; height: 100%; display: block; padding: 72px 32px 104px; }
+.stage__brand {
+  position: absolute; top: 16px; inset-inline-end: 16px; z-index: 2;
+  display: flex; align-items: center; gap: 10px; padding: 9px 18px 9px 14px;
+  border-radius: 999px; font: 1.2rem/1 var(--display); text-decoration: none;
+}
+.stage__brand svg { width: 15px; height: 19px; fill: var(--pine); }
+
+/* svg drawing */
+#plan path { fill: var(--paper); stroke: var(--ink); stroke-width: 12; stroke-linejoin: miter; transition: fill .25s, opacity .5s; }
+#plan .shared path { fill: var(--shared); }
+#plan .apt.available path { fill: var(--free); cursor: pointer; }
+#plan:not(.is-apt) .apt.available:hover path,
+#plan:not(.is-apt) .apt.available:focus-visible path { fill: var(--free-hover); }
+#plan .apt.rented path { fill: url(#hatch); }
+#plan .apt { outline: none; transition: opacity .5s; }
+#plan.is-apt .apt:not(.on) { opacity: .22; pointer-events: none; }
+#plan.is-apt .apt.on path { fill: var(--paper); }
+#plan.is-apt .apt.on .room:not(.hall) { cursor: pointer; }
+#plan.is-apt .apt.on .room:not(.hall):hover,
+#plan.is-apt .apt.on .room:focus-visible { fill: var(--room-hover); outline: none; }
+#plan.is-apt .apt.on .room.hl { fill: var(--room-hover); }
+#plan.is-apt .apt.on .room.sel { fill: var(--room-sel); }
+#plan .apt.on .hall { fill: #F7F5F0; }
+#plan text { font-family: var(--body); fill: var(--ink); text-anchor: middle; pointer-events: none; direction: rtl; }
+#plan .shared text { font-size: 34px; fill: var(--ink-soft); }
+#plan .room-label { font-size: 30px; font-weight: 700; opacity: 0; transition: opacity .4s; }
+#plan .room-label tspan + tspan { font-weight: 400; font-size: 24px; fill: var(--ink-soft); }
+#plan.is-apt .apt.on .room-label { opacity: 1; }
+#plan .rented-label { font: 44px var(--display); fill: var(--ink-soft); }
+#plan.is-apt .rented-label { opacity: 0; }
+
+/* the walls draw themselves once on load */
+#plan.draw path { stroke-dasharray: 1; stroke-dashoffset: 1; fill-opacity: 0; animation: draw 1.8s cubic-bezier(.6,0,.2,1) forwards, fill .8s 1.2s forwards; }
+@keyframes draw { to { stroke-dashoffset: 0; } }
+@keyframes fill { to { fill-opacity: 1; } }
+
+/* apartment chips over the building view */
+.chips { position: absolute; inset: 0; pointer-events: none; }
+.chip {
+  position: absolute; translate: -50% -50%; pointer-events: auto;
+  display: grid; justify-items: center; gap: 2px; padding: 12px 20px 10px; border-radius: 22px;
+  color: var(--ink); font: 600 .85rem/1.2 var(--body); cursor: pointer; white-space: nowrap;
+  transition: opacity .35s, scale .35s cubic-bezier(.3,1.5,.5,1);
+}
+.chip b { font: 400 1.7rem/1 var(--display); }
+.chip b i { font-style: normal; }
+.chip span { color: var(--ink-soft); }
+.chip:hover { scale: 1.06; }
+.chip--rented { cursor: default; opacity: .9; }
+.chip--rented:hover { scale: 1; }
+.chip:not(.chip--rented)::after {
+  content: ""; position: absolute; top: -4px; inset-inline-start: -4px; width: 12px; height: 12px;
+  border-radius: 50%; background: var(--pine); box-shadow: 0 0 0 0 rgba(47,74,58,.5);
+  animation: pulse 2.4s ease-out infinite;
+}
+@keyframes pulse { 70% { box-shadow: 0 0 0 12px rgba(47,74,58,0); } 100% { box-shadow: 0 0 0 0 rgba(47,74,58,0); } }
+.is-apt-view .chip { opacity: 0; scale: .8; pointer-events: none; }
+
+/* ---------- panel (side on desktop, bottom sheet on phones) ---------- */
+.panel {
+  position: fixed; top: 16px; bottom: 16px; inset-inline-start: 16px; z-index: 5;
+  width: calc(var(--panel-w) - 32px); border-radius: 32px;
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.panel__grab { display: none; }
+.panel__body { overflow-y: auto; overscroll-behavior: contain; padding: 30px 26px 110px; flex: 1; }
+.panel h1 { font-size: clamp(2.4rem, 5vw, 3.2rem); }
+.panel .muted { color: var(--ink-soft); margin-top: 8px; }
+.panel .back {
+  all: unset; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
+  padding: 7px 14px; margin-bottom: 18px; border-radius: 999px; font-weight: 600; font-size: .95rem;
+  background: rgba(255,255,255,.6); box-shadow: inset 0 0 0 1px rgba(31,36,33,.1);
+}
+.panel .back::before { content: "›"; font-size: 1.3em; line-height: 1; }
+.panel .back:focus-visible { outline: 2px solid var(--pine); outline-offset: 2px; }
+
+.list { list-style: none; margin: 22px 0 0; padding: 0; display: grid; gap: 8px; }
+.list button {
+  all: unset; box-sizing: border-box; width: 100%; cursor: pointer;
+  display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 14px;
+  padding: 10px 12px; border-radius: 18px; background: rgba(255,255,255,.55);
+  box-shadow: inset 0 0 0 1px rgba(31,36,33,.07); transition: background .2s;
+}
+.list button:hover, .list button.hl { background: rgba(255,255,255,.95); }
+.list button:focus-visible { outline: 2px solid var(--pine); outline-offset: 2px; }
+.list button[disabled] { cursor: default; opacity: .6; }
+.list .num { font: 2rem/1 var(--display); width: 44px; text-align: center; color: var(--pine); }
+.list img { width: 52px; height: 52px; border-radius: 12px; object-fit: cover; background: var(--limestone); }
+.list .ph { width: 52px; height: 52px; border-radius: 12px; background: var(--limestone); }
+.list strong { display: block; font-size: 1.05rem; }
+.list small { color: var(--ink-soft); font-size: .92rem; }
+.list .go { color: var(--ink-soft); font-size: 1.3rem; }
+
+.facts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.facts span { padding: 6px 12px; border-radius: 999px; background: rgba(255,255,255,.6); font-size: .92rem; font-weight: 600; box-shadow: inset 0 0 0 1px rgba(31,36,33,.07); }
+
+.strip { display: flex; gap: 10px; overflow-x: auto; scroll-snap-type: x mandatory; margin: 18px -26px 0; padding: 0 26px 6px; scrollbar-width: none; }
+.strip::-webkit-scrollbar { display: none; }
+.strip button { all: unset; cursor: zoom-in; flex: 0 0 78%; scroll-snap-align: center; aspect-ratio: 3 / 4; border-radius: 22px; overflow: hidden; background: var(--limestone); }
+.strip button:only-child { flex-basis: 100%; }
+.strip button:focus-visible { outline: 2px solid var(--pine); outline-offset: 2px; }
+.strip img { width: 100%; height: 100%; object-fit: cover; }
+.empty { margin-top: 18px; padding: 26px 22px; border-radius: 22px; background: rgba(255,255,255,.55); color: var(--ink-soft); text-align: center; }
+
+.panel .cta-row { margin-top: 24px; }
+.panel .cta-row .btn { flex: 1 1 auto; justify-content: center; }
+.panel .link { display: inline-block; margin-top: 18px; color: var(--pine); font-weight: 600; }
+.video-btn { margin-top: 16px; }
+
+/* dock sits under the plan on desktop */
+.plan-app .dock { left: calc((100% - var(--panel-w)) / 2); }
+
+/* hover preview (desktop) */
+.peek {
+  position: fixed; z-index: 20; left: 0; top: 0; width: 220px; padding: 8px; border-radius: 22px;
+  pointer-events: none; opacity: 0; scale: .9; transition: opacity .2s, scale .2s;
+}
+.peek.on { opacity: 1; scale: 1; }
+.peek img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 15px; background: var(--limestone); }
+.peek img[hidden] { display: none; }
+.peek div { padding: 8px 6px 2px; display: flex; justify-content: space-between; gap: 8px; }
+.peek span { color: var(--ink-soft); }
+
+.lightbox [hidden] { display: none !important; }
+.panel .btn--glass { background: rgba(255,255,255,.85); box-shadow: inset 0 0 0 1px rgba(31,36,33,.08); }
+.lightbox video { max-width: calc(100vw - 32px); max-height: 84svh; border-radius: 24px; }
+
+/* ---------- phones ---------- */
+@media (max-width: 899px) {
+  .plan-app { --panel-w: 0px; }
+  .stage { inset: 0; bottom: calc(var(--sheet-peek) - 28px); transition: bottom .45s cubic-bezier(.2,.9,.2,1); }
+  #plan { padding: 64px 12px 40px; }
+  .stage__brand { top: calc(12px + env(safe-area-inset-top)); inset-inline-end: 12px; font-size: 1.05rem; padding: 8px 16px 8px 12px; }
+  /* compact numbered chips; details are in the list below */
+  .chip { width: 46px; height: 46px; padding: 0; border-radius: 50%; place-content: center; }
+  .chip b { font-size: 1.6rem; }
+  .chip b i, .chip span { display: none; }
+  .chip--rented { opacity: .75; }
+
+  .panel {
+    top: auto; bottom: 0; inset-inline: 0; width: auto;
+    height: var(--sheet-h, var(--sheet-peek)); border-radius: 30px 30px 0 0;
+    transition: height .45s cubic-bezier(.2,.9,.2,1);
+  }
+  .panel.dragging { transition: none; }
+  body:not(.is-apt-view) { --sheet-peek: 36svh; }
+  .plan-app.is-room { --sheet-peek: 56svh; } /* stage shrinks with the sheet, so the chosen room stays in view */
+  .panel__grab { all: unset; display: grid; place-items: center; height: 26px; flex: none; cursor: grab; touch-action: none; }
+  .panel__grab span { width: 44px; height: 5px; border-radius: 3px; background: rgba(31,36,33,.25); }
+  .panel__body { padding: 4px 18px calc(100px + env(safe-area-inset-bottom)); }
+  .panel h1 { font-size: 2.3rem; }
+  .strip { margin-inline: -18px; padding-inline: 18px; }
+  .strip button { flex-basis: 62%; }
+  .panel .cta-row { display: none; } /* the dock carries the contact buttons on phones */
+
+  .peek { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #plan.draw path { animation: none; stroke-dasharray: none; fill-opacity: 1; }
+  .chip::after { animation: none; }
+}

@@ -287,3 +287,5 @@ main > section { padding: clamp(88px, 12vw, 168px) var(--gutter); position: rela
   .room { padding-bottom: 16px; gap: 12px; }
   .room__text p { font-size: 1rem; line-height: 1.5; }
 }
+
+.journey__head .plan-link { margin-inline-start: auto; padding: .7em 1.2em; font-size: .95rem; }
