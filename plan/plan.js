@@ -139,7 +139,7 @@ function render(first) {
   document.body.classList.toggle('is-room', !!room);
   for (const a of PLAN.apartments) {
     a.g.classList.toggle('on', a === apt);
-    a.g.setAttribute('tabindex', !apt && a.status === 'available' ? 0 : -1);
+    a.g.setAttribute('tabindex', a !== apt && a.status === 'available' ? 0 : -1);
   }
   for (const p of roomEls) {
     p.classList.toggle('sel', p.room === room);
@@ -178,7 +178,7 @@ const buildingView = () => `
       <span class="go" aria-hidden="true">${a.status === 'rented' ? '' : '‹'}</span>
     </button></li>`).join('')}</ul>
   ${cta()}
-  <a class="link" href="../">לסיור המלא באתר</a>`;
+  <a class="link" href="tour/">לסיור המלא באתר</a>`;
 
 const aptView = apt => `
   <button type="button" class="back" data-go="">כל הבניין</button>
@@ -214,10 +214,14 @@ panel.addEventListener('pointerleave', () => highlight());
 
 svg.addEventListener('click', e => {
   const g = e.target.closest('.apt');
-  if (!cur.apt) { if (g?.classList.contains('available')) go(`apt-${g.dataset.apt}`); return; }
+  // any other available apartment (also the faded ones while zoomed in) opens directly
+  if (g?.classList.contains('available') && +g.dataset.apt !== cur.apt?.id) return go(`apt-${g.dataset.apt}`);
+  if (!cur.apt) return;
   const p = e.target.closest('.room');
   if (p && p.apt === cur.apt && p.room.type !== 'hall') go(`apt-${cur.apt.id}/${p.room.id}`);
+  else if (!g) go(cur.room ? `apt-${cur.apt.id}` : ''); // empty space steps back out
 });
+document.querySelector('.zoom-out').addEventListener('click', () => go(''));
 svg.addEventListener('keydown', e => {
   if (e.key !== 'Enter' && e.key !== ' ') return;
   e.preventDefault();

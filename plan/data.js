@@ -4,7 +4,7 @@ const PX_PER_CM = 0.85; // measured from the 720 cm living room of apt 2 and the
 const R = (x1, y1, x2, y2) => `M${x1} ${y1} H${x2} V${y2} H${x1} Z`;
 
 // Provisional photos by room type; replaced per apartment once the photos are tagged.
-const IMG = n => `../assets/img/${n}.webp`;
+const IMG = n => `assets/img/${n}.webp`; // relative to the page at the site root
 const BY_TYPE = {
   living: ['living-1', 'living-4', 'living-2', 'living-3'].map(IMG),
   kitchen: ['kitchen-1', 'kitchen-2'].map(IMG),
