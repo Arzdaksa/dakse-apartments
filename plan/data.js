@@ -56,7 +56,6 @@ const PLAN = window.PLAN = {
         { id: 'parents', name: 'חדר שינה הורים', type: 'parents', d: R(1605, 1505, 1840, 1860) },
         { id: 'kids', name: 'חדר ילדים', type: 'kids', d: R(1945, 1505, 2245, 1725) },
         { id: 'bath', name: 'חדר רחצה', type: 'bath', d: R(2045, 1725, 2245, 1905) },
-        { id: 'bath2', name: 'שירותים', type: 'bath', d: R(1840, 1730, 1975, 1860) },
       ],
     },
     {
