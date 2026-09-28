@@ -27,7 +27,7 @@
 <div class="ambient" aria-hidden="true"><i></i><i></i><i></i></div>
 
 <main class="stage" aria-label="תוכנית קומת הכניסה">
-  <a class="stage__brand glass" href="tour/" aria-label="בית דקסה, לסיור המלא">
+  <a class="stage__brand glass" href="./" aria-label="בית דקסה, כל הבניין">
     <svg viewBox="0 0 32 40" aria-hidden="true"><path d="M2 40V16a14 14 0 0 1 28 0v24z"/></svg>
     <span>בית דקסה</span>
   </a>
@@ -39,7 +39,9 @@
   <div class="chips" aria-hidden="false"></div>
 </main>
 
-<aside class="panel glass" aria-live="polite">
+<p class="sr-live" aria-live="polite"></p>
+
+<aside class="panel glass" aria-label="פרטים">
   <button class="panel__grab" type="button" aria-label="הרחבת החלונית"><span></span></button>
   <div class="panel__body"></div>
 </aside>
@@ -51,8 +53,9 @@
   <a href="https://wa.me/972522791267" target="_blank" rel="noopener" class="dock__btn dock__btn--wa"><svg><use href="#i-wa"/></svg><span>וואטסאפ</span></a>
 </nav>
 
-<dialog class="lightbox" aria-label="תצוגת תמונה">
+<dialog class="lightbox" aria-label="תצוגה מוגדלת">
   <img alt="">
+  <span class="lb-count glass" dir="ltr" aria-live="polite"></span>
   <video playsinline controls hidden></video>
   <button type="button" class="lb-btn lb-close glass" aria-label="סגירה">✕</button>
   <button type="button" class="lb-btn lb-prev glass" aria-label="התמונה הקודמת">›</button>

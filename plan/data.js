@@ -5,7 +5,8 @@ const R = (x1, y1, x2, y2) => `M${x1} ${y1} H${x2} V${y2} H${x1} Z`;
 
 // Photos and videos as tagged by the family (tag.html). Keys are room ids; untagged rooms show a "book a visit" note.
 const IMG = n => `assets/img/${n}.webp`; // relative to the page at the site root
-const VID = n => ({ src: `assets/${n}.mp4`, poster: `assets/${n}-poster.webp` });
+const LENGTH = { tour: '0:51', 'tour-2': '0:33', 'tour-3': '0:24', 'tour-4': '0:30' }; // from ffprobe
+const VID = (n, label = 'סיור וידאו בדירה') => ({ src: `assets/${n}.mp4`, poster: `assets/${n}-poster.webp`, label, length: LENGTH[n] });
 const MEDIA = {
   1: {
     rooms: { kids: ['view', 'view-2'] },
@@ -14,7 +15,7 @@ const MEDIA = {
   },
   2: {
     rooms: {},
-    videos: ['tour', 'tour-4'],
+    videos: [['tour', 'סיור מודרך עם הסבר'], ['tour-4', 'סיור נוסף בדירה']],
   },
   3: {
     rooms: {
@@ -86,7 +87,7 @@ PLAN.building = ['entrance', 'lobby-1', 'lobby-2'].map(IMG);
 for (const apt of PLAN.apartments) {
   const m = MEDIA[apt.id] || {};
   apt.views = (m.views || []).map(IMG);
-  apt.videos = (m.videos || []).map(VID);
+  apt.videos = (m.videos || []).map(v => (Array.isArray(v) ? VID(...v) : VID(v)));
   for (const room of apt.rooms) room.photos = (m.rooms?.[room.id] || []).map(IMG);
 }
 PLAN.PX_PER_CM = PX_PER_CM;

@@ -5,6 +5,7 @@ const panel = document.querySelector('.panel');
 const body = panel.querySelector('.panel__body');
 const peek = document.querySelector('.peek');
 const dockWa = document.querySelector('.dock__btn--wa');
+const live = document.querySelector('.sr-live');
 const motionOK = !matchMedia('(prefers-reduced-motion: reduce)').matches && window.gsap;
 const phone = matchMedia('(max-width: 899px)');
 
@@ -78,10 +79,6 @@ for (const apt of PLAN.apartments) {
   apt.box = bbox(apt.rooms.flatMap(r => polys(r.d)));
   apt.count = apt.rooms.filter(r => LIVING_TYPES.includes(r.type)).length;
   apt.g = g;
-  if (apt.status === 'available') {
-    g.setAttribute('role', 'button');
-    g.setAttribute('aria-label', `דירה ${apt.id}, ${apt.count} חדרים`);
-  }
 
   // floating glass chip over the building view
   const chip = document.createElement('button');
@@ -110,8 +107,7 @@ function placeChips() {
   if (!m) return;
   for (const apt of PLAN.apartments) {
     const p = new DOMPoint(apt.box.x + apt.box.w / 2, apt.box.y + apt.box.h / 2).matrixTransform(m);
-    apt.chip.style.left = `${p.x - s.left}px`;
-    apt.chip.style.top = `${p.y - s.top}px`;
+    apt.chip.style.transform = `translate(${p.x - s.left}px, ${p.y - s.top}px)`;
   }
 }
 
@@ -126,7 +122,7 @@ const go = h => {
   if (h) location.hash = h;
   else { history.pushState(null, '', location.pathname + location.search); render(); }
 };
-addEventListener('popstate', render);
+addEventListener('popstate', () => render());
 
 let cur = {};
 function render(first) {
@@ -137,20 +133,22 @@ function render(first) {
   svg.classList.toggle('is-apt', !!apt);
   document.body.classList.toggle('is-apt-view', !!apt);
   document.body.classList.toggle('is-room', !!room);
-  for (const a of PLAN.apartments) {
-    a.g.classList.toggle('on', a === apt);
-    a.g.setAttribute('tabindex', a !== apt && a.status === 'available' ? 0 : -1);
-  }
+  for (const a of PLAN.apartments) a.g.classList.toggle('on', a === apt);
+  chipsEl.inert = !!apt; // hidden chips must not take focus
   for (const p of roomEls) {
     p.classList.toggle('sel', p.room === room);
     p.setAttribute('tabindex', apt && p.apt === apt ? 0 : -1);
   }
-  if (aptChanged) zoomTo(apt ? pad(apt.box) : vbFull(), !first);
+  if (aptChanged) {
+    zoomTo(apt ? pad(apt.box) : vbFull(), !first);
+    if (!first && phone.matches) setSheet(false); // let the zoom be seen
+  }
 
   body.innerHTML = apt ? (room ? roomView(apt, room) : aptView(apt)) : buildingView();
   body.scrollTop = 0;
   dockWa.href = WA + waText(apt?.id);
   document.title = apt ? `${room ? room.name + ', ' : ''}דירה ${apt.id} | בית דקסה` : TITLE;
+  if (!first) live.textContent = apt ? `${room ? room.name + ', ' : ''}דירה ${apt.id}` : 'כל הבניין';
   peek.classList.remove('on');
   highlight();
 }
@@ -159,10 +157,12 @@ const vbFull = () => ({ x: vx, y: vy, w: vw, h: vh });
 /* ---------- panel views ---------- */
 const thumb = src => src.replace(/\.webp$/, '-sm.webp');
 // photo strip; data-lb="<set>:<index>" tells the lightbox which list to page through
-const strip = (list, set, alt) => `<div class="strip">${list.map((p, i) => `<button type="button" data-lb="${set}:${i}" aria-label="הגדלת תמונה ${i + 1} מתוך ${list.length}"><img src="${p}" alt="${alt}" loading="lazy"></button>`).join('')}</div>`;
-const videos = apt => !apt.videos.length ? '' : `
-  <h2 class="sub">${apt.videos.length > 1 ? 'סיורי וידאו' : 'סיור וידאו'}</h2>
-  <div class="videos">${apt.videos.map((v, i) => `<button type="button" data-video="${i}" aria-label="סיור וידאו ${i + 1} בדירה ${apt.id}"><img src="${v.poster}" alt="" loading="lazy"><span class="play" aria-hidden="true"></span></button>`).join('')}</div>`;
+const strip = (list, set, alt) => `<div class="strip">${list.map((p, i) => `<button type="button" data-lb="${set}:${i}" aria-label="הגדלת תמונה ${i + 1} מתוך ${list.length}"><img src="${thumb(p)}" alt="${alt}" loading="lazy"></button>`).join('')}</div>`;
+const videos = apt => apt.videos.map((v, i) => `
+  <button type="button" class="vcard" data-video="${i}">
+    <span class="vcard__poster"><img src="${v.poster}" alt="" loading="lazy"><span class="play" aria-hidden="true"></span></span>
+    <span class="vcard__text"><strong>${v.label}</strong><small>צפייה בדירה מבפנים (${v.length})</small></span>
+  </button>`).join('');
 const cta = id => `<div class="cta-row">
   <a class="btn btn--solid" href="tel:+972522791267"><svg><use href="#i-phone"/></svg>התקשרו</a>
   <a class="btn btn--glass" href="${WA + waText(id)}" target="_blank" rel="noopener"><svg class="wa"><use href="#i-wa"/></svg>וואטסאפ</a>
@@ -179,7 +179,7 @@ const buildingView = () => `
   <ul class="list">${PLAN.apartments.map(a => `
     <li><button type="button" data-go="apt-${a.id}" ${a.status === 'rented' ? 'disabled' : ''}>
       <span class="num">${a.id}</span>
-      <span><strong>דירה ${a.id}</strong><small>${a.status === 'rented' ? 'מושכרת' : `${a.count} חדרים, כ-${a.area} מ״ר`}</small></span>
+      <span><strong>דירה ${a.id}</strong><small>${a.status === 'rented' ? 'מושכרת' : `${a.count} חדרים, כ-${a.area} מ״ר`}</small>${a.videos.length ? '<em class="badge">סיור וידאו</em>' : ''}</span>
       <span class="go" aria-hidden="true">${a.status === 'rented' ? '' : '‹'}</span>
     </button></li>`).join('')}</ul>
   ${cta()}
@@ -188,10 +188,9 @@ const buildingView = () => `
   <a class="link" href="tour/">לסיור המלא באתר</a>`;
 
 const aptView = apt => `
-  <button type="button" class="back" data-go="">כל הבניין</button>
   <h1 class="display">דירה ${apt.id}</h1>
+  <div class="vcards">${videos(apt)}</div>
   <div class="facts"><span>${apt.count} חדרים</span><span>כ-${apt.area} מ״ר</span><span>מזגן בכל חדר</span><span>חניה פרטית</span><span>דוד גז</span></div>
-  ${videos(apt)}
   ${apt.views.length ? `<h2 class="sub">הנוף מהדירה</h2>${strip(apt.views, 'view', `הנוף מדירה ${apt.id}`)}` : ''}
   <h2 class="sub">החדרים</h2>
   <p class="muted">בחרו חדר בתוכנית או ברשימה.</p>
@@ -216,7 +215,7 @@ panel.addEventListener('click', e => {
   else if ('lb' in t.dataset) {
     const [set, i] = t.dataset.lb.split(':');
     openPhotos({ room: cur.room?.photos, view: cur.apt?.views, building: PLAN.building }[set], +i);
-  } else openVideo(cur.apt.videos[+t.dataset.video].src);
+  } else openVideo(cur.apt.videos[+t.dataset.video]);
 });
 // list hover lights up the room on the plan (mouse only; on touch a tap navigates anyway)
 const highlight = id => { for (const p of roomEls) p.classList.toggle('hl', !!id && p.apt === cur.apt && p.room.id === id); };
@@ -233,6 +232,7 @@ svg.addEventListener('click', e => {
   else if (!g) go(cur.room ? `apt-${cur.apt.id}` : ''); // empty space steps back out
 });
 document.querySelector('.zoom-out').addEventListener('click', () => go(''));
+document.querySelector('.stage__brand').addEventListener('click', e => { e.preventDefault(); go(''); });
 svg.addEventListener('keydown', e => {
   if (e.key !== 'Enter' && e.key !== ' ') return;
   e.preventDefault();
@@ -294,24 +294,33 @@ const endDrag = e => {
   setSheet(moved ? panel.offsetHeight > mid : !open);
 };
 grab.addEventListener('pointerup', endDrag);
+body.addEventListener('scroll', () => { if (phone.matches && !open && body.scrollTop > 24) setSheet(true); }, { passive: true });
 grab.addEventListener('pointercancel', endDrag);
 
 /* ---------- lightbox (same markup/styles as the main site) ---------- */
 const dlg = document.querySelector('.lightbox');
 const dImg = dlg.querySelector('img'), dVid = dlg.querySelector('video');
 let lb = [], li = 0;
-const lbShow = i => { li = (i + lb.length) % lb.length; dImg.src = lb[li]; };
+const count = dlg.querySelector('.lb-count');
+const lbShow = i => {
+  li = (i + lb.length) % lb.length;
+  dImg.src = lb[li];
+  count.textContent = lb.length > 1 ? `${li + 1} / ${lb.length}` : '';
+  if (lb.length > 1) new Image().src = lb[(li + 1) % lb.length]; // next photo is ready before the swipe
+};
 const setArrows = on => dlg.querySelectorAll('.lb-prev, .lb-next').forEach(b => (b.hidden = !on));
 function openPhotos(list, i) {
   lb = list; dVid.hidden = true; dImg.hidden = false;
   lbShow(i); setArrows(list.length > 1); dlg.showModal();
 }
-function openVideo(src) {
-  lb = []; dImg.hidden = true; dVid.hidden = false; setArrows(false);
-  dVid.src = src; dlg.showModal(); dVid.play().catch(() => {});
+function openVideo(v) {
+  lb = []; dImg.hidden = true; dVid.hidden = false; setArrows(false); count.textContent = '';
+  dVid.poster = v.poster; dVid.src = v.src;
+  dlg.showModal(); dVid.play().catch(() => {});
 }
-dlg.addEventListener('close', () => dVid.pause());
-dlg.addEventListener('click', e => { if (e.target === dlg) dlg.close(); });
+dlg.addEventListener('close', () => { dVid.pause(); dVid.removeAttribute('src'); dVid.load(); }); // stop downloading
+let swiped = false;
+dlg.addEventListener('click', e => { if (e.target === dlg && !swiped) dlg.close(); swiped = false; });
 dlg.querySelector('.lb-close').addEventListener('click', () => dlg.close());
 dlg.querySelector('.lb-next').addEventListener('click', () => lbShow(li + 1));
 dlg.querySelector('.lb-prev').addEventListener('click', () => lbShow(li - 1));
@@ -325,7 +334,8 @@ dlg.addEventListener('pointerdown', e => (x0 = e.clientX));
 dlg.addEventListener('pointerup', e => {
   if (x0 === null || lb.length < 2) return;
   const dx = e.clientX - x0; x0 = null;
-  if (Math.abs(dx) > 50) lbShow(li + (dx > 0 ? 1 : -1));
+  swiped = Math.abs(dx) > 50;
+  if (swiped) lbShow(li + (dx > 0 ? 1 : -1));
 });
 
 /* ---------- start ---------- */
